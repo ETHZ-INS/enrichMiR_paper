@@ -1,0 +1,163 @@
+---
+title: "Figure_1"
+author: "Michael Soutschek"
+date: "12/14/2021"
+output: html_document
+---
+
+
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+knitr::opts_chunk$set(fig.width=8)
+```
+
+# `r getFigNb(TRUE)`
+
+```{r, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(cowplot)
+  library(ggrepel)
+  library(viridis)
+  library(data.table)
+  library(S4Vectors)
+  library(patchwork)
+  library(ggplotify)
+  library(Biobase)
+  library(ComplexHeatmap)
+  suppressWarnings(library(enrichMiR))
+})
+
+```
+
+
+```{r}
+load("../../../enrichMiR/data/exampleDEA.RData")
+sets_ex <- readRDS("../../../enrichMiR_data/Targetscan/20211124_Targetscan8_Human_ConPred_human.rds")
+
+sets_SC <- readRDS("../../../enrichMiR_data/scanMiR/scanMiR_GRCh38_gene.rds")
+sets_MB <- readRDS("../../../enrichMiR_data/miRTarBase/miRTarBase8.human.rds")
+```
+
+
+```{r, message=FALSE,warning=FALSE}
+e_ex <- testEnrichment(exampleDEA, sets = sets_ex,tests = "siteoverlap")
+res <- getResults(e_ex,"siteoverlap.down",flatten = TRUE)
+```
+
+```{r, message=FALSE}
+#parameters
+enr.field = "enrichment"
+sig.field = "FDR"
+label.enr.thres = 0.5
+col.field = NULL
+label.sig.thres=0.05
+max.sig.thres=100
+opacity=0.5
+maxLabels = 10
+label.field = NULL
+size.field = "overlap"
+
+
+#prepare res
+if(is.null(label.field)){
+    res$set <- row.names(res)
+    label.field <- "set"
+  }else{
+    if(length(label.field<- head(intersect(label.field,colnames(res)),n=1))==0)
+      stop("`label.field` not found.")
+  }
+res[["overlap"]] <- as.numeric(res[["overlap"]])
+res[["set_size"]] <- as.numeric(res[["set_size"]])
+res <- res[order(res[[sig.field]]),]
+res <- res[which(res[[sig.field]] <= max.sig.thres),]
+w <- which(abs(res[[enr.field]])>=label.enr.thres & 
+               res[[sig.field]]<label.sig.thres)
+w <- head(w,n=maxLabels)
+sig.field2 <- paste0("-log10(",sig.field,")")
+res[[sig.field2]] <- -log10(res[[sig.field]])
+ll <- list(label=label.field, x=enr.field, y=sig.field2)
+if(!is.null(size.field)) ll$size <- size.field
+if(!is.null(col.field)) ll$colour <- col.field
+for(f in setdiff(colnames(res), unlist(ll))) ll[[f]] <- f
+  
+#plot
+p1 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res[w,], show.legend = FALSE, point.padding = 5) + theme_classic() + ggtitle("HEK cells, miR-133 mimic transfection")
+
+```
+
+
+
+```{r, message=FALSE}
+#CD Plot Targetscan
+fams <- metadata(sets_ex)$families
+set_133 <- as.character(droplevels(fams[grep("miR-133a-3p.1",names(fams))]))
+
+p2 <- CDplotWrapper(dea = exampleDEA, sets = sets_ex, setName = set_133, by = "sites", k = 2) +
+  coord_cartesian(xlim = c(-2,1)) + theme_classic() + 
+  ggtitle(paste0("miR-133a-3p.1 ",set_133)) + guides(color=guide_legend(title="TargetScan")) + scale_colour_manual(values=c("#000004FF","#E65D2FFF"))
+
+p3 <- CDplotWrapper(dea = exampleDEA, sets = sets_ex, setName = set_133, by = "score", k = 3) +
+  coord_cartesian(xlim = c(-2,1)) + theme_classic() + 
+  ggtitle(paste0("miR-133a-3p.1 ",set_133)) + guides(color=guide_legend(title="TargetScan\nscore"))
+
+p4 <- CDplotWrapper(dea = exampleDEA, sets = sets_ex, setName = set_133, by = "best_stype") + 
+  coord_cartesian(xlim = c(-2,1)) + theme_classic() + ggtitle(paste0(set_133," - miR-133a-3p")) + guides(color=guide_legend(title="TargetScan\nbest site type")) 
+```
+
+
+
+
+
+```{r, message=FALSE}
+#CD Plot ScanMir
+set_133 <- "hsa-miR-133a-3p"
+
+p5 <- CDplotWrapper(dea = exampleDEA, sets = sets_SC, setName = set_133, by = "best_stype") + coord_cartesian(xlim = c(-2,1)) + theme_classic() + ggtitle(set_133) + guides(color=guide_legend(title="ScanMiR\nbest site type"))
+
+p6 <- CDplotWrapper(dea = exampleDEA, sets = sets_SC, setName = set_133, by = "sites", k = 2) + coord_cartesian(xlim = c(-2,1)) + theme_classic() + ggtitle(set_133) + guides(color=guide_legend(title="ScanMiR")) + scale_colour_manual(values=c("#000004FF","#E65D2FFF"))
+
+p7 <- CDplotWrapper(dea = exampleDEA, sets = sets_SC, setName = set_133, by = "score", k = 3) + coord_cartesian(xlim = c(-2,1)) + theme_classic() + ggtitle(set_133) + guides(color=guide_legend(title="ScanMiR\nscore")) 
+```
+
+
+
+```{r, message=FALSE}
+#CD Plot miRTarBase
+set_133 <- "hsa-miR-133a-3p"
+p8 <- CDplotWrapper(dea = exampleDEA, sets = sets_MB, setName = set_133, by = "sites", k = 2) + coord_cartesian(xlim = c(-2,1)) + theme_classic() + ggtitle(set_133) + guides(color=guide_legend(title="miRTarBase"))
+```
+
+
+
+
+
+```{r}
+pp1 <- plot_grid(p1,p4, labels=c("A","B"), nrow=1, rel_widths = c(1,0.75))
+pp2 <- plot_grid(p5,p3, labels = c("C","D"), nrow = 1)
+pp3 <- plot_grid(p2,p6,p8, labels = c("E","F","G"), nrow = 1)
+pp <- plot_grid(pp1,pp2,pp3,nrow = 3)
+
+```
+
+
+
+
+```{r,fig.width=10, fig.height=9}
+pp
+#ggsave("suppl_5.png",plot = pp, units = "in",width = 10,height = 9,bg = "white")
+```
+
+
+### `r getFigNb()`
+
+**Example enrichMiR analysis on a miR-133 overexpression dataset. A:** Enrichment plot showing the results of an enrichMiR analysis on DEA generated from RNA-sequencing data upon miR-133 overexpression in HEK cells using the siteoverlap test and the TargetScan human conserved annotation. Each bubble depicts one miRNA family with the top two ranked candidates being paralogues of the miR-133 family ("UGGUCC" = miR-133a3p.1, "UUGGUCC" = hsa-miR-133a-3p.2/hsa-miR-133b).
+**B-G:** CD plots of the same enrichMiR analysis employing the following parameters: **(B)** TargetScan human conserved annotation & split by best site type, **(C)** scanMiR human & split by best site type, **(D)** TargetScan human conserved & split by score as well as plots **(E-G)** splitting in targets and non-targets with all three provided miRNA target collections.
+

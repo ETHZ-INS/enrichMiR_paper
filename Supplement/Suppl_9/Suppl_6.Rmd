@@ -1,0 +1,119 @@
+---
+title: "enrichMiR_Kleaveland_2018"
+author: "Michael Soutschek"
+date: "31 1 2021"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+knitr::opts_chunk$set(fig.width=8)
+```
+
+# `r getFigNb(TRUE)`
+
+
+```{r}
+suppressPackageStartupMessages({
+library(SummarizedExperiment)
+library(enrichMiR)
+library(ggrepel)
+library(data.table)
+library(cowplot)
+library(readxl)
+})
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+#sets
+sets_O <- readRDS("/mnt/schratt/enrichMiR_data/oRNAment/mouse_coding_MSS05_gene_3UTR_pred.rds")
+
+
+#dea
+dea <- read_excel("./Cuffdiff_gene_expression_autismgenes_2 (long).xlsx", 
+    sheet = "kd_379_410_ctrl2")
+dea <- dea[dea$status == "OK",]
+
+#background
+back <- unique(recapitalizeGenes(dea$gene,gformat = "mouse"))
+
+#Go-Term
+#findGO("Synapse",ontology = "CC")
+# GO:0060076  >> "excitatory synapse" 
+ps <- getGOgenes("GO:0060076", species = "Mm", ensembl_ids = FALSE)
+ps <- ps[[1]]
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+enr.go <- enr.so <- testEnrichment(x = ps,background = back, sets = sets_O,tests = "siteoverlap")
+res <- getResults(enr.go,test = "siteoverlap.features",flatten = TRUE)
+```
+
+
+```{r}
+#parameters
+enr.field = "enrichment"
+sig.field = "FDR"
+col.field =  NULL
+label.enr.thres = 0.29
+label.sig.thres=0.3
+max.sig.thres=100
+opacity=0.75
+cols <- viridis(6)
+maxLabels = 5
+label.field = NULL
+size.field = "overlap"
+min.enr.thres=0
+
+
+#prepare res
+if(is.null(label.field)){
+    res$set <- row.names(res)
+    label.field <- "set"
+  }else{
+    if(length(label.field<- head(intersect(label.field,colnames(res)),n=1))==0)
+      stop("`label.field` not found.")
+  }
+if(!is.null(min.enr.thres)) res <- res[res[[enr.field]]>=min.enr.thres,]
+res[["overlap"]] <- as.numeric(res[["overlap"]])
+res[["set_size"]] <- as.numeric(res[["set_size"]])
+res <- res[order(res[[sig.field]]),]
+res <- res[which(res[[sig.field]] <= max.sig.thres),]
+w <- which(abs(res[[enr.field]])>=label.enr.thres & 
+               res[[sig.field]]<label.sig.thres)
+w <- head(w,n=maxLabels)
+sig.field2 <- paste0("-log10(",sig.field,")")
+res[[sig.field2]] <- -log10(res[[sig.field]])
+ll <- list(label=label.field, x=enr.field, y=sig.field2)
+if(!is.null(size.field)) ll$size <- size.field
+if(!is.null(col.field)) ll$colour <- col.field
+for(f in setdiff(colnames(res), unlist(ll))) ll[[f]] <- f
+  
+#plot
+p1 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res[w,], show.legend = FALSE, point.padding = 7,max.overlaps = 20, min.segment.length = 0) + theme_classic() + ggtitle("RBPs potentially regulating synaptic genes in the hippocampus") + xlab("enrichment")
+```
+
+
+
+```{r,fig.width=7, fig.height=7}
+p1
+#ggsave("Suppl_6.png",plot = p1, width = 10, height = 8,bg = "white")
+```
+
+
+
+
+
+
+
+
+

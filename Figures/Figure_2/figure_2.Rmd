@@ -1,0 +1,144 @@
+---
+title: "enrichMiR_Kleaveland_2018"
+author: "Michael Soutschek"
+date: "31 1 2021"
+output: html_document
+---
+
+
+```{r}
+suppressPackageStartupMessages({
+library(SummarizedExperiment)
+devtools::load_all("/mnt/schratt/enrichMiR/")
+library(ggrepel)
+library(data.table)
+library(cowplot)
+})
+```
+
+#load Data
+```{r}
+#sets
+sets_SC <- readRDS("/mnt/schratt/enrichMiR_data/scanMiR/scanMiR_GRCm38_gene.rds")
+sets_TS <- readRDS("/mnt/schratt/enrichMiR_data/Targetscan/20211124_Targetscan8_Mouse_ConPred_mouse.rds")
+
+#dea
+dea <- fread("../../enrichMiR_Seq_datasets/Kleaveland_2018/data/GSE112415_DESeq2_skeletalmuscle.txt.gz")
+colnames(dea)[which(colnames(dea)=="log2(CyrKO/CyrWT)")] <- "logFC"
+dea <- dea[order(dea$baseMean,decreasing = TRUE),]
+dea <- dea[1:5000,]
+
+#mir
+miRMuscle <-  getMouseMirExp("Muscle")
+miRMuscle <- matchMirExpr(me = miRMuscle,setsNames = sets_TS)
+```
+
+
+# enrichMiR site.overlap
+```{r}
+enr <- testEnrichment(dea,sets = sets_TS,tests = "siteoverlap", sets.properties = miRMuscle)
+res <- getResults(enr,test = c("siteoverlap.down"),flatten = TRUE)
+```
+
+
+#EnrichPlot
+```{r}
+#parameters
+enr.field = "enrichment"
+sig.field = "FDR"
+col.field =  "expression"
+label.enr.thres = 0.25
+label.sig.thres=0.3
+max.sig.thres=100
+opacity=0.75
+maxLabels = 10
+label.field = "members"
+size.field = "overlap"
+min.enr.thres=0
+
+
+#prepare res
+if(is.null(label.field)){
+    res$set <- row.names(res)
+    label.field <- "set"
+  }else{
+    if(length(label.field<- head(intersect(label.field,colnames(res)),n=1))==0)
+      stop("`label.field` not found.")
+  }
+if(!is.null(min.enr.thres)) res <- res[res[[enr.field]]>=min.enr.thres,]
+res[["overlap"]] <- as.numeric(res[["overlap"]])
+res[["set_size"]] <- as.numeric(res[["set_size"]])
+res <- res[order(res[[sig.field]]),]
+res <- res[which(res[[sig.field]] <= max.sig.thres),]
+w <- which(abs(res[[enr.field]])>=label.enr.thres & 
+               res[[sig.field]]<label.sig.thres)
+w <- head(w,n=maxLabels)
+sig.field2 <- paste0("-log10(",sig.field,")")
+res[[sig.field2]] <- -log10(res[[sig.field]])
+ll <- list(label=label.field, x=enr.field, y=sig.field2)
+if(!is.null(size.field)) ll$size <- size.field
+if(!is.null(col.field)) ll$colour <- col.field
+for(f in setdiff(colnames(res), unlist(ll))) ll[[f]] <- f
+  
+#plot
+p1 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res[w,], show.legend = FALSE, point.padding = 2, nudge_y = -0.1, size = 5) + theme_classic() + ggtitle("Cyrano KO - Skeletal Muscle") + xlab("enrichment") + scale_colour_viridis_c(direction = -1) + labs(colour="expression") + guides(overlap = guide_legend(order = 2),colour = guide_colorbar(order = 1)) + theme(plot.title = element_text(size=15), axis.text=element_text(size=12), axis.title=element_text(size=14),legend.title=element_text(size=13), legend.text=element_text(size=12))
+```
+
+
+
+
+
+
+
+#CD Plot Targetscan
+```{r}
+#sites
+fams <- metadata(sets_TS)$families
+set_7 <- as.character(droplevels(fams[grep("miR-7a-5p",names(fams))]))
+p2 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_7, by = "sites", k = 2) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle(paste0("miR-7a-5p ",set_7)) + guides(color=guide_legend(title="TargetScan")) 
+```
+
+#CD Plot ScanMiR
+```{r}
+#sites
+set_7 <- "mmu-miR-7a-5p"
+
+p3 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "best_stype") + coord_cartesian(xlim = c(-0.35,0.35)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="ScanMiR\nbest site type")) + theme(plot.title = element_text(size=15), axis.text=element_text(size=12), axis.title=element_text(size=14),legend.title=element_text(size=13), legend.text=element_text(size=12))
+
+p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "score",k=3) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="ScanMiR\nscore")) + scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
+```
+
+
+#Example
+```{r}
+# load("../../../enrichMiR/data/exampleDEA.RData")
+# sets_ex <- readRDS("../../../enrichMiR_data/Targetscan/20211124_Targetscan8_Human_ConPred_human.rds")
+```
+
+```{r, message=FALSE}
+# #.siteTypeColors()
+# fams <- metadata(sets_ex)$families
+# set_133 <- as.character(droplevels(fams[grep("miR-133a-3p.1",names(fams))]))
+# p5 <- CDplotWrapper(dea = exampleDEA, sets = sets_ex, setName = set_133, by = "best_stype") + 
+#   coord_cartesian(xlim = c(-2,1)) + theme_classic() + ggtitle(paste0(set_133," - miR-133a-3p")) + guides(color=guide_legend(title="best site type")) 
+```
+
+
+
+
+#Save
+```{r}
+pp <- plot_grid(p1,p3, labels=c("A","B"), nrow=1, rel_widths = c(0.9,0.75), scale = c(0.975,0.975))
+# pp2 <- plot_grid(p3,p4,labels = c("C","D"),nrow = 1)
+# pp <- plot_grid(pp1,pp2,nrow = 2)
+ggsave("figure_2.png",plot = pp, width = 11, height = 4,bg = "white")
+```
+
+
+
+
+
+
+
+
+

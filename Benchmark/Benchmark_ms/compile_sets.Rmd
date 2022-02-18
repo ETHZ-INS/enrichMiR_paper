@@ -1,0 +1,114 @@
+---
+title: "Compile benchmark results"
+author: "Pierre-Luc Germain"
+date: "12/16/2021"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(SummarizedExperiment)
+  library(BiocParallel)
+  library(enrichMiR)
+  library(ggplot2)
+  library(ComplexHeatmap)
+})
+source("../functions.R")
+```
+
+# Running the benchmark with different databases
+```{r, eval=FALSE}
+
+allds=c("bartel.hela.DEA.SE.rds",
+        "bartel.hek.DEA.SE.rds",
+        "amin.DEA.SE.rds"
+        )
+
+allParams <- c(
+  lapply(allds[1:2], FUN=function(x) 
+    list(ds=x, ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=NULL)),
+  list(
+    list(ds=allds[3], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=NULL)),
+  lapply(allds[1:2], FUN=function(x) 
+    list(ds=x, ts="20211124_Targetscan8_Human_AllPred_human.rds", miRNAs=NULL)),
+  list(
+    list(ds=allds[3], ts="20211124_Targetscan8_Mouse_AllPred_mouse.rds", miRNAs=NULL)),
+  lapply(allds[1:2], FUN=function(x) 
+    list(ds=x, ts="scanMiR_GRCh38_gene.rds", miRNAs=NULL)),
+  list(
+    list(ds=allds[3], ts="scanMiR_GRCm38_gene.rds", miRNAs=NULL)
+  )
+)
+
+tmp <- enrichBenchmark(allParams, nrep=2, cores=8, tests=c("siteoverlap","areamir","lmadd"),
+                       prefix="sets2/")
+
+# reprocess the scanMiR matches with the appropriate truth
+fams <- unlist(lapply(unique(sapply(allParams, FUN=function(x) x$ts)), FUN=function(x){
+  metadata(readRDS(paste0("data/",x)))$families
+}))
+lf <- list.files("sets2","enrichMiR",full=TRUE)
+lf <- lf[grep("TargetScan",lf,invert=TRUE,ignore.case=TRUE)]
+bench <- lapply(lf, FUN=function(x){
+  el <- readRDS(x)
+  names(i) <- i <- intersect(names(TPs2), names(el))
+  tps <- lapply(i, FUN=function(x) c(TPs[x],TPs2[x]))
+  b <- getDF(i, el[i], tps)
+  saveRDS(b, gsub("enrichMiR","benchmark",x))
+  ## family-level benchmark
+  el <- lapply(el, FUN=function(eli){
+    lapply(eli, FUN=function(eli2){
+      lapply(eli2, FUN=function(x){
+        if(sum(row.names(x) %in% names(fams))>1){
+          x <- aggregate(x[,grep("pval|fdr",colnames(x),ignore.case=TRUE)],
+                         by=list(family=as.character(fams[row.names(x)])),
+                         FUN=function(x) exp(mean(log(x))) )
+          x <- x[row.names(x)!="NA",]
+          row.names(x) <- x$family
+          x <- x[,setdiff(colnames(x),"family")]
+        }
+        x
+      })
+    })
+  })
+  i <- intersect(names(TPs), names(el))
+  b <- getDF(i, el[i], TPs[i])
+  saveRDS(b, gsub("enrichMiR","benchFam",x))
+})
+e <- aggregateBenchmarkResults(list.files("sets2", pattern="benchmark", full=TRUE))
+e$annotation <- c("TargetScan (conserved)","scanMiR")[1+grepl("scanMiR",e$dataset)]
+e$annotation[which(grepl("TargetScan",e$annotation) & !grepl("ConPred",e$dataset))] <- "TargetScan (all)"
+e2 <- aggregateBenchmarkResults(list.files("sets2", pattern="benchFamscanMiR", full=TRUE))
+e2$annotation <- "scanMiR (family)"
+e2$dataset <- gsub("\\.benchFam","",e2$dataset)
+e <- e[which(e$treatment %in% unique(e2$treatment[!is.na(e2$rank)])),]
+e <- rbind(e,e2)
+e$dataset <- sapply(strsplit(gsub("20211124|scanMiR","/",e$dataset),"/"), FUN=function(x) x[2])
+e <- e[which(e$method!="ebayes"),]
+e$rank[is.na(e$rank)] <- 20
+tt <- table(e$treatment)
+e <- e[e$treatment %in% names(tt)[tt>=median(tt)],]
+e$TP.atFDR05[which(e$TP.atFDR05>1)] <- 1
+e <- e[(e$method!="siteoverlap.up" | e$dataset %in% c("amin","jeong")) &
+       (e$method!="siteoverlap.down" | !(e$dataset %in% c("amin","jeong"))),]
+e$method <- gsub("\\.down|\\.up","",e$method)
+saveRDS(e, file="sets2/aggregated.rds")
+```
+
+
+# Overview
+
+```{r, fig.height=8, fig.width=8}
+e <- readRDS("sets2/aggregated.rds")
+# bmhm(e, by="annotation", doSort=TRUE)
+# bmhm(e, by="annotation", value.var="FDR", doSort=TRUE)
+
+ag <- aggregate(e[,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method","annotation")], FUN=mean)
+ag$annotation <- gsub(" ","\n",ag$annotation)
+ggplot(ag, aes(FDR, TP.atFDR05, colour=method, label=method)) + 
+  geom_point() + ggrepel::geom_text_repel() + theme_bw() + 
+  facet_grid(annotation~dataset) + scale_x_continuous(breaks=pretty_breaks(4)) + 
+  scale_y_continuous(breaks=pretty_breaks(4)) + theme(legend.position="none")
+```
+

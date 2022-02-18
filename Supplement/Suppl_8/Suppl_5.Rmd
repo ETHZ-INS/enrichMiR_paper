@@ -1,0 +1,117 @@
+---
+title: "figure_3"
+author: "Michael Soutschek"
+date: "12/14/2021"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+knitr::opts_chunk$set(fig.width=8)
+```
+
+# `r getFigNb(TRUE)`
+
+
+```{r, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(cowplot)
+  library(ggrepel)
+  library(viridis)
+  library(data.table)
+  library(S4Vectors)
+  suppressWarnings(library(enrichMiR))
+})
+```
+
+
+```{r}
+#dea
+dea <- fread("../../enrichMiR_Seq_datasets/Rajman_2017/Rajman_2019_DEA.csv")
+dea <- dea[dea$logCPM > 2.5,]
+
+#mir
+mir <- as.data.frame(fread("../../enrichMiR_Seq_datasets/Rajman_2017/DIV20 enrich Neuron HC miRNA.csv"))
+mir <- mir[,c("Gene name","logCPM")]
+row.names(mir) <- mir$`Gene name`
+mir$`Gene name` <- NULL
+mir_filt <- mir[mir$logCPM > 5, ,drop = FALSE]
+
+#sets
+sets_TS<- readRDS("../../../enrichMiR_data/Targetscan/20211124_Targetscan8_Mouse_ConPred_rat.rds")
+sets_SC<- readRDS("../../../enrichMiR_data/scanMiR/scanMiR_rnor6_gene.rds")
+```
+
+
+
+
+
+```{r, message=FALSE}
+#CD Plot Targetscan
+
+fams <- metadata(sets_TS)$families
+set_129_TS <- as.character(droplevels(fams[grep("-129-5p",names(fams))]))
+
+p1 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_129_TS, by = "sites", k = 2) + coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + 
+  ggtitle(paste0("miR-129-5p ",set_129_TS)) + guides(color=guide_legend(title="TargetScan")) + scale_colour_manual(values=c("#000004FF","#E65D2FFF"))
+
+p2 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_129_TS, by = "score") + coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + 
+  ggtitle(paste0("miR-129-5p ",set_129_TS)) + guides(color=guide_legend(title="TargetScan\ncontext++ score")) + 
+  scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
+
+p3 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_129_TS, by = "best_stype", k = 2) + coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + 
+  ggtitle(paste0("miR-129-5p ",set_129_TS)) + guides(color=guide_legend(title="TargetScan\nbest site type")) 
+```
+
+
+
+
+
+```{r, message=FALSE}
+#CD Plot ScanMiR
+
+set_129_SC <- "rno-miR-129-5p"
+
+p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "sites", k = 2) + 
+  coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
+  guides(color=guide_legend(title="ScanMiR")) + scale_colour_manual(values=c("#000004FF","#E65D2FFF"))
+
+p5 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "score") + 
+  coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
+  guides(color=guide_legend(title="ScanMiR\nscore")) + 
+  scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
+```
+
+
+
+
+
+
+
+```{r}
+pp1 <- plot_grid(p3,NULL,labels = c("A",""), nrow = 1)
+pp2 <- plot_grid(p2,p5,labels = c("B","C"), nrow = 1)
+pp3 <- plot_grid(p1,p4,labels = c("D","E"), nrow = 1)
+
+pp <- plot_grid(pp1,pp2,pp3,labels = NULL,nrow = 3)
+```
+
+
+```{r,fig.width=10, fig.height=10}
+pp
+ggsave("Suppl_5.png",pp,units = "in",width = 10,height = 10, bg = "white")
+```
+
+
+### `r getFigNb()`
+
+**CD plots supporting a potential role for miR-129-5p in PTX mediated homeostatic scaling in neurons. A** CD plot with the TargetScan rat conserved annotation, split by best site type. **B** CD plot split by score with the TargetScan rat conserved annotation. **C** CD plot split by score with the scanMiR rat annotation. **D-E** CD plots split in targets / non-targets with again the TargetScan rat conserved and the scanMiR rat annotations.
+

@@ -1,0 +1,55 @@
+---
+title: "enrichMiR Benchmark SFig 1"
+author: "Pierre-Luc Germain"
+date: "2021/02/13"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+knitr::opts_chunk$set(fig.width=8)
+```
+
+# `r getFigNb(TRUE)`
+
+```{r}
+suppressPackageStartupMessages({
+library(cowplot)
+library(ggrepel)
+library(ComplexHeatmap)
+library(grid)
+})
+e <- readRDS("../../Benchmark/Benchmark_methods/aggregated.rds")
+source("../../Benchmark/functions.R")
+theme_set(theme_bw(base_size = 14))
+```
+
+```{r, fig.width=5, fig.height=6}
+e <- e[e$method!="regmir.bb" & e$dataset!="ratPolyA",]
+
+p1 <- grid.grabExpr(draw(bmhm(e[e$prop=="original",], doSort=TRUE)))
+
+e2 <- e[e$method %in% c("siteoverlap","areamir","woverlap","lmadd"),]
+levels(e2$prop)[-1] <- paste(levels(e2$prop)[-1],"%")
+p2 <- ggplot(e2, aes(prop, rank)) + geom_violin() + scale_y_log10() + 
+  labs(x="Proportion of scrambling", y="Rank of true miRNA")
+  
+p3 <- grid.grabExpr(draw(bmhm(e, doSort=TRUE)))
+p4 <- grid.grabExpr(draw(bmhm(e, value.var="FDR", doSort=TRUE)))
+
+plot_grid(p2, labels="AUTO", scale=0.95)
+```
+
+
+
+### `r getFigNb()`
+
+**Benchmark of the target enrichment methods with scrambled datasets. A:** Effect of the partial scrambling on the detection accuracy. 
+

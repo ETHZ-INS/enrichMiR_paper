@@ -1,0 +1,50 @@
+---
+title: "Benchmarking combinations of tests"
+author: "Pierre-Luc Germain"
+date: "2022/02/13"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(SummarizedExperiment)
+  library(BiocParallel)
+  library(ggplot2)
+  library(ComplexHeatmap)
+})
+source("../functions.R")
+```
+
+
+# Adding combinations
+
+```{r, eval=FALSE}
+lf <- list.files(pattern="enrichMiR")
+bo <- lapply(lf, FUN=function(f){
+  el <- readRDS(f)
+  el <- lapply(el, FUN=function(x){
+    lapply(x,addTestCombinations)
+  })
+  i <- intersect(names(el), names(TPs))
+  getDF(i, el[i], TPs[i])
+})
+names(bo) <- gsub(".enrichMiR.rds","",lf,fixed=TRUE)
+e <- aggregateBenchmarkResults(bo)
+saveRDS(e, file="ag_with_combination.rds")
+```
+
+```{r}
+e <- e[e$method!="regmir.bb",]
+h1 <- bmhm(e, doSort=TRUE)
+h2 <- bmhm(e, value.var="FDR", doSort=TRUE)
+
+methshow <- c("areamir","siteoverlap","lmadd")
+methshow <- c(methshow, grep("^comb",unique(e$method),value=TRUE))
+e <- e[e$method %in% methshow,]
+ag <- aggregate(e[e$method %in% methshow,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method")], FUN=mean)
+p <- ggplot(ag, aes(FDR, TP.atFDR05, colour=method, label=method)) + geom_point() + 
+  ggrepel::geom_text_repel() + facet_wrap(~dataset)
+p
+```
+

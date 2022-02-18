@@ -1,0 +1,53 @@
+---
+title: "enrichMiR Benchmark SFig 2 - miRNA expression"
+author: "Pierre-Luc Germain"
+date: "2021/02/13"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+knitr::opts_chunk$set(fig.width=8)
+```
+
+# `r getFigNb(TRUE)`
+
+```{r}
+suppressPackageStartupMessages({
+library(cowplot)
+library(ggrepel)
+library(ComplexHeatmap)
+library(grid)
+})
+e <- readRDS("../../Benchmark/Benchmark_exonic_expr/aggregated.rds")
+source("../../Benchmark/functions.R")
+theme_set(theme_bw(base_size=12))
+```
+
+```{r, fig.height=7, fig.width=6}
+e <- e[!e$exonic,]
+ag <- aggregate(e[,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method","mirexp")], FUN=mean)
+ag$dataset <- c(ratPolyA="rat", "amin"="Amin et al.", "bartel.hek"="HEK", "bartel.hela"="HeLa")[as.character(ag$dataset)]
+p1 <- ggplot(ag, aes(FDR, TP.atFDR05, colour=mirexp, shape=method)) + 
+  geom_point(size = 2) + facet_wrap(~dataset) + theme_bw() + scale_colour_manual(values=c("#000004FF","#E65D2FFF")) +
+  theme(
+      strip.text.x = element_text(size = 11, color = "white"),strip.background = element_rect(color="black", fill="black"))
+p2 <- bmhm(e, by="mirexp", show_row_names = TRUE) + 
+  bmhm(e, by="mirexp", show_row_names = TRUE, value.var="FDR")
+p2 <- grid.grabExpr(draw(p2, column_title="Restricting to expressed miRNAs", 
+                         column_title_side = "bottom"))
+cowplot::plot_grid(p2,NULL,plot_grid(NULL,p1,nrow =1, labels = NULL,rel_widths = c(0.1,1)),nrow=3,rel_heights=c(3.5,0.1,2), labels=c("A","","B"), scale=0.95)
+```
+
+
+### `r getFigNb()`
+
+**Restricting hypotheses to expressed miRNA systematically improves performance. A:** Rank of the true miRNA (left) and FDR (right) using all or only expressed miRNAs, with the two best-performing tests. **B:** Summary of the specificity/sensitivity of using all or only expressed miRNAs.

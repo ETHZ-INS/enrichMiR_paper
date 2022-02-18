@@ -1,0 +1,63 @@
+---
+title: "Compile benchmark results"
+author: "Pierre-Luc Germain"
+date: "12/16/2021"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(SummarizedExperiment)
+  library(BiocParallel)
+  library(enrichMiR)
+  library(ggplot2)
+  library(ComplexHeatmap)
+})
+source("../functions.R")
+source("functions_ms.R")
+```
+
+# Running the benchmark with different databases
+```{r, eval=FALSE}
+
+allds=c("bartel.hela.DEA.SE.rds",
+        "bartel.hek.DEA.SE.rds",
+        "amin.DEA.SE.rds"
+        )
+
+allParams <- c(
+  lapply(allds[1:2], FUN=function(x) 
+    list(ds=x, ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=NULL)),
+  list(
+    list(ds=allds[3], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=NULL))
+  )
+
+tmp <- enrichBenchmark2(allParams, nrep=2, cores=6)
+```
+
+
+```{r}
+e <- aggregateBenchmarkResults2()
+e <- e[(e$method!="siteoverlap.up" | e$dataset %in% c("amin","jeong")) &
+       (e$method!="siteoverlap.down" | !(e$dataset %in% c("amin","jeong"))),]
+e$method <- gsub("\\.down|\\.up","",e$method)
+e$method <- gsub("\\.features","",e$method)
+saveRDS(e, file="back/aggregated.rds")
+```
+
+
+
+# Overview
+
+```{r}
+e <- readRDS("back/aggregated.rds")
+
+bmhm(e, by="background", doSort=TRUE)
+bmhm(e, by="background", value.var="FDR", doSort=TRUE)
+
+ag <- aggregate(e[,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method","background")], FUN=mean)
+ggplot(ag, aes(FDR, TP.atFDR05, colour=background, label=background)) + 
+  geom_point() + ggrepel::geom_text_repel() + facet_grid(~dataset)
+```
+

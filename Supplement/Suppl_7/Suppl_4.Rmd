@@ -1,0 +1,97 @@
+---
+title: "enrichMiR_Kleaveland_2018"
+author: "Michael Soutschek"
+date: "31 1 2021"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+knitr::opts_chunk$set(fig.width=8)
+```
+
+# `r getFigNb(TRUE)`
+
+```{r}
+suppressPackageStartupMessages({
+library(SummarizedExperiment)
+library(enrichMiR)
+library(ggrepel)
+library(data.table)
+library(cowplot)
+})
+```
+
+
+```{r}
+#load Data
+
+#sets
+sets_SC <- readRDS("/mnt/schratt/enrichMiR_data/scanMiR/scanMiR_GRCm38_gene.rds")
+sets_TS <- readRDS("/mnt/schratt/enrichMiR_data/Targetscan/20211124_Targetscan8_Mouse_ConPred_mouse.rds")
+
+#dea
+dea <- fread("../../enrichMiR_Seq_datasets/Kleaveland_2018/data/GSE112415_DESeq2_skeletalmuscle.txt.gz")
+colnames(dea)[which(colnames(dea)=="log2(CyrKO/CyrWT)")] <- "logFC"
+dea <- dea[order(dea$baseMean,decreasing = TRUE),]
+dea <- dea[1:5000,]
+```
+
+
+
+
+
+
+
+```{r, message=FALSE}
+#CD Plot Targetscan
+
+#sites
+fams <- metadata(sets_TS)$families
+set_7 <- as.character(droplevels(fams[grep("miR-7a-5p",names(fams))]))
+
+p1 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_7, by = "sites", k = 2) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle(paste0("miR-7a-5p ",set_7)) + guides(color=guide_legend(title="TargetScan")) 
+
+p2 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_7, by = "score", k = 3) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle(paste0("miR-7a-5p ",set_7)) + guides(color=guide_legend(title="TargetScan\ncontext++ score")) + scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
+
+p3 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_7, by = "best_stype", k = 3) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle(paste0("miR-7a-5p ",set_7)) + guides(color=guide_legend(title="TargetScan\nbest site type"))
+```
+
+
+```{r,message=FALSE}
+#CD Plot ScanMiR
+
+#sites
+set_7 <- "mmu-miR-7a-5p"
+
+p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "sites", k = 2) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="ScanMiR"))
+
+p5 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "score",k=3) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="ScanMiR\nscore")) + scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+pp1 <- plot_grid(p1,p2,p3, labels=c("A","B","C"), nrow=2)
+pp2 <- plot_grid(p4,p5,labels = c("D","E"),nrow = 1)
+pp <- plot_grid(pp1,pp2,nrow = 2, rel_heights = c(2,1))
+```
+
+
+```{r,fig.width=10, fig.height=10}
+pp
+#ggsave("Suppl_4.png",plot = pp, width = 10, height = 10,bg = "white")
+```
+
+
+
+
+
+
+

@@ -1,0 +1,15 @@
+*_cache
+*_files
+Benchmark/data/*.exon.DEA.SE.rds
+Archive
+Benchmark/*/*.enrichMiR*
+Benchmark/*/*.benchmark*
+Benchmark/*/*/*.benchmark*
+Benchmark/*/*/*.enrichMiR*
+*.enrichMiR_back*
+*.pdf
+*.png
+*exon.DEA.SE.rds
+enrichMiR_Seq_datasets
+*jeong*
+*ratPolyA*

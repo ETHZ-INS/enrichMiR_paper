@@ -1,0 +1,187 @@
+---
+title: "figure_3"
+author: "Michael Soutschek"
+date: "12/14/2021"
+output: html_document
+---
+
+
+```{r, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(cowplot)
+  library(ggrepel)
+  library(viridis)
+  library(data.table)
+  library(S4Vectors)
+  suppressWarnings(library(enrichMiR))
+})
+```
+
+
+```{r}
+#dea
+dea <- fread("../../enrichMiR_Seq_datasets/Rajman_2017/Rajman_2019_DEA.csv")
+dea <- dea[dea$logCPM > 2.5,]
+
+#mir
+mir <- as.data.frame(fread("../../enrichMiR_Seq_datasets/Rajman_2017/DIV20 enrich Neuron HC miRNA.csv"))
+mir <- mir[,c("Gene name","logCPM")]
+row.names(mir) <- mir$`Gene name`
+mir$`Gene name` <- NULL
+mir_filt <- mir[mir$logCPM > 5, ,drop = FALSE]
+
+#sets
+sets_TS<- readRDS("../../../enrichMiR_data/Targetscan/20211124_Targetscan8_Mouse_ConPred_rat.rds")
+sets_SC<- readRDS("../../../enrichMiR_data/scanMiR/scanMiR_rnor6_gene.rds")
+```
+
+
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+e <- testEnrichment(dea, sets = sets_TS,tests = "siteoverlap",sets.properties = mir_filt)
+res <- getResults(e,"siteoverlap.down",flatten = TRUE)
+```
+
+# enrichPlot
+```{r}
+#parameters
+enr.field = "enrichment"
+sig.field = "pvalue"
+col.field = "logCPM"
+label.enr.thres = 0.5
+label.sig.thres=0.025
+max.sig.thres=100
+opacity=0.75
+cols <- viridis(6)
+maxLabels = 10
+label.field = "members"
+size.field = "overlap"
+
+
+#prepare res
+if(is.null(label.field)){
+    res$set <- row.names(res)
+    label.field <- "set"
+  }else{
+    if(length(label.field<- head(intersect(label.field,colnames(res)),n=1))==0)
+      stop("`label.field` not found.")
+  }
+res[["overlap"]] <- as.numeric(res[["overlap"]])
+res[["set_size"]] <- as.numeric(res[["set_size"]])
+res <- res[order(res[[sig.field]]),]
+res <- res[which(res[[sig.field]] <= max.sig.thres),]
+w <- which(abs(res[[enr.field]])>=label.enr.thres & 
+               res[[sig.field]]<label.sig.thres)
+w <- head(w,n=maxLabels)
+sig.field2 <- paste0("-log10(",sig.field,")")
+res[[sig.field2]] <- -log10(res[[sig.field]])
+ll <- list(label=label.field, x=enr.field, y=sig.field2)
+if(!is.null(size.field)) ll$size <- size.field
+if(!is.null(col.field)) ll$colour <- col.field
+for(f in setdiff(colnames(res), unlist(ll))) ll[[f]] <- f
+  
+#plot
+p1 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res[w,], show.legend = FALSE, point.padding = 3, nudge_y = -0.1) + scale_colour_viridis_c(direction = -1) + theme_classic() + ggtitle("Neurons, PTX treatment") + theme(plot.title = element_text(size=16), axis.text=element_text(size=13), axis.title=element_text(size=15),legend.title=element_text(size=14), legend.text=element_text(size=13))
+
+```
+
+
+
+#CD Plot
+```{r, message=FALSE}
+#.siteTypeColors()
+# fams <- metadata(sets_TS)$families
+# set_129_TS <- as.character(droplevels(fams[grep("-129-5p",names(fams))]))
+# 
+# p2 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_129_TS, by = "sites", k = 2) + coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ",set_129_TS)) + guides(color=guide_legend(title="TargetScan")) + scale_colour_manual(values=c("#000004FF","#E65D2FFF"))
+
+set_129_SC <- "rno-miR-129-5p"
+p3 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "best_stype") + 
+  coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
+  guides(color=guide_legend(title="ScanMiR\nbest site type")) + theme(plot.title = element_text(size=16), axis.text=element_text(size=13), axis.title=element_text(size=15),legend.title=element_text(size=14), legend.text=element_text(size=13))
+
+# p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "score") + 
+#   coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
+#   guides(color=guide_legend(title="ScanMiR\nscore")) + 
+#   scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
+```
+
+
+
+# enrichMiR GO-Term
+```{r}
+findGO("Calcium", ontology = "CC")
+# GO:0034704  >> "calcium channel complex" 
+ps <- getGOgenes("GO:0034704", species = "Rn", ensembl_ids = TRUE)
+ps <- ps[[1]]
+
+# background
+back <- dea$V1
+```
+
+
+```{r}
+enr.go <- enr.so <- testEnrichment(x = ps,background = back, sets = sets_TS,tests = "siteoverlap",sets.properties = mir_filt)
+res.go <- getResults(enr.go,test = "siteoverlap.features",flatten = TRUE)
+```
+
+# enrichPlot GO
+```{r}
+#parameters
+enr.field = "enrichment"
+sig.field = "FDR"
+col.field = "logCPM"
+label.enr.thres = 0.5
+label.sig.thres=0.05
+max.sig.thres=100
+opacity=0.75
+maxLabels = 10
+label.field = "members"
+size.field = "overlap"
+
+
+#prepare res
+if(is.null(label.field)){
+    res.go$set <- row.names(res.go)
+    label.field <- "set"
+  }else{
+    if(length(label.field<- head(intersect(label.field,colnames(res.go)),n=1))==0)
+      stop("`label.field` not found.")
+  }
+res.go[["overlap"]] <- as.numeric(res.go[["overlap"]])
+res.go[["set_size"]] <- as.numeric(res.go[["set_size"]])
+res.go <- res.go[order(res.go[[sig.field]]),]
+res.go <- res.go[which(res.go[[sig.field]] <= max.sig.thres),]
+w <- which(abs(res.go[[enr.field]])>=label.enr.thres & 
+               res.go[[sig.field]]<label.sig.thres)
+w <- head(w,n=maxLabels)
+sig.field2 <- paste0("-log10(",sig.field,")")
+res.go[[sig.field2]] <- -log10(res.go[[sig.field]])
+ll <- list(label=label.field, x=enr.field, y=sig.field2)
+if(!is.null(size.field)) ll$size <- size.field
+if(!is.null(col.field)) ll$colour <- col.field
+for(f in setdiff(colnames(res.go), unlist(ll))) ll[[f]] <- f
+  
+#plot
+p5 <- ggplot(res.go, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res.go[w,], show.legend = FALSE, point.padding = 3, nudge_y = -0.15) + scale_colour_viridis_c(direction = -1) + theme_classic() + ggtitle("GO:0034704 calcium channel complex") + theme(plot.title = element_text(size=16), axis.text=element_text(size=13), axis.title=element_text(size=15),legend.title=element_text(size=14), legend.text=element_text(size=13))
+```
+
+
+
+
+
+```{r}
+pp1 <- plot_grid(p1,p3,labels = c("A","B"), rel_widths = c(1,0.8))
+#pp2 <- plot_grid(p3,p4,labels = c("C","D"))
+pp3 <- plot_grid(p5,NULL,labels = c("C",""), rel_widths = c(1,0.8))
+
+pp <- plot_grid(pp1,pp3,labels = NULL,nrow = 2)
+ggsave("figure_3.png",pp,units = "in",width = 11,height = 8, bg = "white")
+```
+
+
+
+
+
+
+

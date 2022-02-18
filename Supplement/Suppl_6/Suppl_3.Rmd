@@ -1,0 +1,145 @@
+---
+title: "enrichMiR_Kleaveland_2018"
+author: "Michael Soutschek"
+date: "31 1 2021"
+output: html_document
+---
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+knitr::opts_chunk$set(fig.width=8)
+```
+
+# `r getFigNb(TRUE)`
+
+```{r, message=FALSE,warning=FALSE}
+suppressPackageStartupMessages({
+library(SummarizedExperiment)
+devtools::load_all("/mnt/schratt/enrichMiR/")
+library(ggrepel)
+library(data.table)
+library(cowplot)
+})
+```
+
+
+```{r}
+#sets
+sets_TS <- readRDS("/mnt/schratt/enrichMiR_data/Targetscan/20211124_Targetscan8_Mouse_ConPred_mouse.rds")
+
+#dea
+ls <- list.files("../../enrichMiR_Seq_datasets/Kleaveland_2018/data/",full.names = TRUE)
+names_vec <- list.files("../../enrichMiR_Seq_datasets/Kleaveland_2018/data/")
+names_vec <- sapply(strsplit(names_vec,"_"),"[",3)
+names_vec <- gsub("\\.txt.gz","",names_vec)
+names_ed <- c("Brain - Anterior cortex", "Brown adipose tissue","Brain - Cerebellum","Brain - Cortex","Brain - Hippocampus","Pancreatic islets","Pituitary","Skeletal muscle","Spleen","Brain - Striatum/Thalamus")
+
+#miRNA expression
+
+##Brain
+miRBrain <-  getMouseMirExp("Brain")
+miRBrain <- matchMirExpr(me = miRBrain,setsNames = sets_TS)
+
+##Pancreas
+miRPancreas <-  getMouseMirExp("Pancreas")
+miRPancreas <- matchMirExpr(me = miRPancreas,setsNames = sets_TS)
+
+##Muscle
+miRMuscle <-  getMouseMirExp("Muscle")
+miRMuscle <- matchMirExpr(me = miRMuscle,setsNames = sets_TS)
+
+##Spleen
+miRSpleen <-  getMouseMirExp("Spleen")
+miRSpleen <- matchMirExpr(me = miRSpleen,setsNames = sets_TS)
+
+```
+
+
+```{r}
+#set parameters
+enr.field = "enrichment"
+sig.field = "FDR"
+col.field =  "expression"
+label.enr.thres = 0.25
+label.sig.thres=0.25
+max.sig.thres=100
+opacity=0.75
+maxLabels = 10
+label.field = "members"
+size.field = "overlap"
+min.enr.thres=0
+```
+
+
+
+
+```{r,message=FALSE,warning=FALSE}
+#create the list
+enr_list <- list()
+for(i in 1:10){
+  #load data
+  dea <- fread(ls[i])
+  colnames(dea)[which(colnames(dea)=="log2(CyrKO/CyrWT)")] <- "logFC"
+  dea <- dea[dea$baseMean > 10,]
+  props <- NULL
+  if(grepl("Brain",names_ed[i])) props <- miRBrain
+  if(grepl("Pancreatic",names_ed[i])) props <- miRPancreas
+  if(grepl("muscle",names_ed[i])) props <- miRMuscle
+  if(grepl("Spleen",names_ed[i])) props <- miRSpleen
+  
+  #enrichMiR
+  enr <- testEnrichment(dea,sets = sets_TS,tests = "siteoverlap", sets.properties = props)
+  res <- getResults(enr,test = c("siteoverlap.down"),flatten = TRUE)
+  
+  #plot
+  if(is.null(label.field)){
+      res$set <- row.names(res)
+      label.field <- "set"
+    }else{
+      if(length(label.field<- head(intersect(label.field,colnames(res)),n=1))==0)
+        stop("`label.field` not found.")
+    }
+  if(!is.null(min.enr.thres)) res <- res[res[[enr.field]]>=min.enr.thres,]
+  res[["overlap"]] <- as.numeric(res[["overlap"]])
+  res[["set_size"]] <- as.numeric(res[["set_size"]])
+  res <- res[order(res[[sig.field]]),]
+  res <- res[which(res[[sig.field]] <= max.sig.thres),]
+  w <- which(abs(res[[enr.field]])>=label.enr.thres & 
+                 res[[sig.field]]<label.sig.thres)
+  w <- head(w,n=maxLabels)
+  sig.field2 <- paste0("-log10(",sig.field,")")
+  res[[sig.field2]] <- -log10(res[[sig.field]])
+  ll <- list(label=label.field, x=enr.field, y=sig.field2)
+  if(!is.null(size.field)) ll$size <- size.field
+  if(!is.null(props)) ll$colour <- col.field
+  for(f in setdiff(colnames(res), unlist(ll))) ll[[f]] <- f
+  
+  p <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + 
+    geom_text_repel(data=res[w,],show.legend = FALSE, point.padding = 3,size = 3) + theme_classic() + 
+    ggtitle(names_ed[i]) + ylim(0,5.5)
+  if(!is.null(props)) p <- p + scale_colour_viridis_c(direction = -1) + labs(colour="expression") + guides(overlap = guide_legend(order = 2),colour = guide_colorbar(order = 1))
+  
+  #add to list
+  enr_list[[names_ed[i]]] <- p
+}
+```
+
+
+
+```{r,fig.width=12, fig.height=12.5}
+pp <- plot_grid(plotlist = enr_list,labels = "AUTO",ncol = 3)
+pp
+#ggsave("Suppl_3.png",plot = pp,units = "in",width = 12,height = 14,bg = "white")
+```
+
+### `r getFigNb()`
+
+**enrichMiR analyses on RNA-sequencing datasets generated from several mouse tissues upon Cyrano knockout. A-J** Enrichment plots on the individual DEAs with genes expressed higher than a baseMean of 10. Bubbles correspond to miRNA families including a colour coded expression of its top expressed member where applicable. miRNA expresion values were applied using the preset mouse miRNA expression tables provided in enrichMiR with the following specifications: **(A,D-E,J)** "Brain", **(F)** "Pancreas", **(H)** "Muscle" & **(I)** "Spleen".
+
+

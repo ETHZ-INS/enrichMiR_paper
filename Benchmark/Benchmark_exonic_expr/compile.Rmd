@@ -1,0 +1,97 @@
+---
+title: "Compile benchmark results"
+author: "Pierre-Luc Germain"
+date: "12/16/2021"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(SummarizedExperiment)
+  library(BiocParallel)
+  library(enrichMiR)
+  library(ggplot2)
+  library(ComplexHeatmap)
+})
+source("functions.R")
+```
+
+# Running the benchmark
+
+```{r, eval=FALSE}
+mirexprs <- allMirExprs()
+
+allds=c("bartel.hela.DEA.SE.rds",
+        "bartel.hek.DEA.SE.rds",
+        "jeong.DEA.SE.rds",
+        "ratPolyA.DEA.SE.rds",
+        "amin.DEA.SE.rds"
+        )
+exds <- c("bartel.hela.exon.DEA.SE.rds",
+          "bartel.hek.exon.DEA.SE.rds", 
+          "jeong.exon.DEA.SE.rds",
+          "ratPolyA.exon.DEA.SE.rds",
+          "amin.exon.DEA.SE.rds")
+
+allParams <- c(
+  lapply(allds[1:3], FUN=function(x)
+    list(ds=x, ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=NULL) ),
+  list(
+    #list(ds=allds[4], ts="TargetScan_rat.rds", miRNAs=NULL),
+    list(ds=allds[5], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=NULL),
+    list(ds=allds[1], ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=mirexprs$hela),
+    list(ds=allds[2], ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=mirexprs$hek),
+    #list(ds=allds[4], ts="20211124_Targetscan8_Mouse_ConPred_rat.rds", miRNAs=mirexprs$rat),
+    list(ds=allds[5], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=mirexprs$mouse)
+  ),
+  lapply(exds[1:3], FUN=function(x) 
+     list(ds=x, ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=NULL) )
+  ,
+  list(
+    #list(ds=exds[4], ts="20211124_Targetscan8_Mouse_ConPred_rat.rds", miRNAs=NULL),
+    list(ds=exds[5], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=NULL)
+  )
+)
+
+tmp <- enrichBenchmark(allParams, nrep=2, cores=6)
+
+e <- aggregateBenchmarkResults()
+e <- e[(e$method!="siteoverlap.up" | e$dataset %in% c("amin","jeong")) &
+       (e$method!="siteoverlap.down" | !(e$dataset %in% c("amin","jeong"))),]
+e$method <- gsub("\\.down|\\.up","",e$method)
+e <- e[!(e$dataset %in% c("ratPolyA","jeong")),]
+e$treatment <- gsub("218DKOvWT","218DKO",e$treatment)
+e$treatment[e$treatment=="miR.138" & e$dataset=="ratPolyA"] <- "miR.138vNeg"
+e$treatment[e$treatment=="miR.499" & e$dataset=="ratPolyA"] <- "miR.499vNeg"
+saveRDS(e, file="aggregated.rds")
+```
+
+# Overview
+
+```{r}
+ag <- aggregate(e[,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method","mirexp","exonic")], FUN=mean)
+```
+
+
+```{r, fig.height=8, fig.width=6}
+p1 <- ggplot(ag[ag$exonic==FALSE,], aes(FDR, TP.atFDR05, colour=mirexp, shape=method)) + 
+  geom_point() + facet_wrap(~dataset)
+p2 <- bmhm(e[!e$exonic,], by="mirexp", show_row_names = TRUE) + 
+  bmhm(e[!e$exonic,], by="mirexp", show_row_names = TRUE, value.var="FDR")
+p2 <- grid.grabExpr(draw(p2, column_title="Restricting to expressed miRNAs", 
+                         column_title_side = "bottom"))
+pp1 <- cowplot::plot_grid(p1,NULL,p2,nrow=3,rel_heights=c(2,0.1,3), labels=c("A","","B"))
+pp1
+```
+
+```{r, fig.height=8, fig.width=6}
+p1 <- ggplot(ag[ag$mirexp==FALSE,], aes(FDR, TP.atFDR05, colour=exonic, shape=method)) + 
+  geom_point() + facet_wrap(~dataset)
+p2 <- bmhm(e[!e$mirexp,], by="exonic", show_row_names = TRUE) + 
+  bmhm(e[!e$mirexp,], by="exonic", show_row_names = TRUE, value.var="FDR")
+p2 <- grid.grabExpr(draw(p2, column_title="Using exon-specific signal", 
+                         column_title_side = "bottom"))
+pp2 <- cowplot::plot_grid(p1,NULL,p2,nrow=3,rel_heights=c(2,0.1,3), labels=c("A","","B"))
+pp2
+```

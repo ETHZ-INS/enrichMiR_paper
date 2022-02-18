@@ -1,0 +1,69 @@
+---
+title: "enrichMiR Benchmark SFig 4 - sets and background"
+author: "Pierre-Luc Germain"
+date: "2021/02/13"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+if(!exists('FIG_NB')){
+  FIG_NB <- 0; FIG_STRING <- "Supplementary Figure S"
+  getFigNb <- function(increment=FALSE){
+    if(increment) FIG_NB <<- FIG_NB + 1
+    paste0(FIG_STRING,FIG_NB)
+  }
+}
+```
+
+# `r getFigNb(TRUE)`
+
+```{r}
+suppressPackageStartupMessages({
+library(cowplot)
+library(ggrepel)
+library(ComplexHeatmap)
+library(grid)
+library(scales)
+})
+source("../../Benchmark/functions.R")
+```
+
+```{r, fig.height=9, fig.width=7, message=FALSE, warning=FALSE}
+e <- readRDS("../../Benchmark/Benchmark_ms/back/aggregated.rds")
+dss <- c(ratPolyA="rat", "amin"="Amin et al.", "bartel.hek"="HEK", "bartel.hela"="HeLa")
+ag <- aggregate(e[,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method","background")], FUN=mean)
+ag$dataset <- dss[as.character(ag$dataset)]
+p1 <- ggplot(ag, aes(FDR, TP.atFDR05, shape=background, label=background)) + 
+  geom_point(size = 2) + ggrepel::geom_text_repel() + facet_grid(~dataset) +
+  theme_bw() + theme(legend.position="none") + labs(y="Sensitivity") +
+  ggtitle("Using a specific background") +
+  theme(
+      strip.text.x = element_text(size = 11, color = "white"),strip.background = element_rect(color="black", fill="black"))
+
+e <- readRDS("../../Benchmark/Benchmark_ms/sets2/aggregated.rds")
+e <- e[which(e$method!="ebayes"),]
+ag <- aggregate(e[,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method","annotation")], FUN=mean)
+ag$dataset <- dss[as.character(ag$dataset)]
+ag$annotation <- gsub(" ","\n",ag$annotation)
+
+p2 <- ggplot(ag, aes(FDR, TP.atFDR05, colour=method, label=method)) + 
+  geom_point(size = 1.5) + ggrepel::geom_text_repel() + theme_bw() + 
+  facet_grid(annotation~dataset) + scale_x_continuous(breaks=pretty_breaks(4)) + 
+  scale_y_continuous(breaks=pretty_breaks(4)) + theme(legend.position="none") +
+  labs(y="Sensitivity (TPR)", x="False Discovery Rate (FDR)", 
+       title="Comparison across annotations") + scale_color_manual(values = c("#E65D2FFF","#A92E5EFF","#000004FF"))  +
+  theme(
+      strip.text.x = element_text(size = 11, color = "white"),strip.background = element_rect(color="black", fill="black"),
+      strip.text.y = element_text(size = 11, color = "white"))
+
+plot_grid(p1, NULL, p2, nrow=3, labels=c("A","","B"), rel_heights=c(1,0.1,2.2), scale=c(0.93,0.95))
+```
+
+
+### `r getFigNb()`
+
+**Benchmark performance of the statistical tests without appropriate background specification as well as with using different target annotations. A:** Impact of using a background (TRUE), i.e. the set of expressed genes, or all genes (FALSE) on the accuracy and FDR of the prediction when using set-based analysis (based on the siteoverlap test).
+**B:** Applicability of the top tests to scanMiR-based annotations, and comparison of the two annotations. Of note, the best tests using the conserved TargetScan annotation perform poorly with larger target annotations; for scanMiR annotations we recommend the lmadd test.
