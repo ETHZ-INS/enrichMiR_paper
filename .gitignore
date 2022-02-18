@@ -9,6 +9,7 @@ Benchmark/*/*/*.enrichMiR*
 *.enrichMiR_back*
 *.pdf
 *.png
+*.html
 *exon.DEA.SE.rds
 enrichMiR_Seq_datasets
 *jeong*
