@@ -22,11 +22,10 @@ source("../functions.R")
 ```{r, eval=FALSE}
 allds=c("bartel.hela.DEA.SE.rds",
         "bartel.hek.DEA.SE.rds",
-        "ratPolyA.DEA.SE.rds",
         "amin.DEA.SE.rds"
         )
 
-tests <- c("areamir", "ebayes", "gsea", "ks", "lmadd", "mw", "overlap", "regmir.bb",
+tests <- c("areamir", "ebayes", "gsea", "ks", "lmadd", "mw", "overlap", "regmir",
            "siteoverlap", "woverlap", "modscore", "modsites")
 
 allParams <- c(
@@ -34,17 +33,17 @@ allParams <- c(
     list(ds=x, ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=NULL)
   ),
   list(
-    list(ds=allds[[3]], ts="20211124_Targetscan8_Mouse_ConPred_rat.rds", miRNAs=NULL),
-    list(ds=allds[[4]], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=NULL)
+    list(ds=allds[[3]], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=NULL)
   )
 )
 
-tmp <- enrichBenchmark(rev(allParams), nrep=2, cores=6, tests=tests)
+tmp <- enrichBenchmark(allParams, nrep=2, cores=10, tests=tests)
 ```
 
 
 ```{r}
 e <- aggregateBenchmarkResults()
+e$dataset <- gsub("20211124.+","",e$dataset)
 e <- e[(!grepl("\\.up$",e$method) | e$dataset %in% c("amin","jeong")) &
        (!grepl("\\.down$",e$method) | !(e$dataset %in% c("amin","jeong"))),]
 e$method <- gsub("\\.down|\\.up","",e$method)

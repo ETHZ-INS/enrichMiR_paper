@@ -176,7 +176,8 @@ pp1 <- plot_grid(p1,p3,labels = c("A","B"), rel_widths = c(1,0.8))
 pp3 <- plot_grid(p5,NULL,labels = c("C",""), rel_widths = c(1,0.8))
 
 pp <- plot_grid(pp1,pp3,labels = NULL,nrow = 2)
-ggsave("figure_3.png",pp,units = "in",width = 11,height = 8, bg = "white")
+ggsave("figure_3.png", pp, units="in", width=11, height=8, bg="white")
+ggsave("figure_3.pdf", pp, units="in", width=11, height=8, bg="white")
 ```
 
 

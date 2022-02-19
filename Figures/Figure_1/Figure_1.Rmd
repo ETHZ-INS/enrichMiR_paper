@@ -28,7 +28,7 @@ source("../../Benchmark/functions.R")
 ```{r}
 theme_set(theme_cowplot(font_size=13, rel_large=15/14))
 res <- readRDS("../../Benchmark/Benchmark_methods/aggregated.rds")
-res <- res[res$method!="regmir.bb" & !grepl("rat|Rat",res$dataset),]
+res <- res[(!grepl("regmir",res$method) | res$method=="regmir.cc") & !grepl("rat|Rat",res$dataset),]
 res2 <- res[res$prop=="original",]
 ```
 
@@ -73,85 +73,18 @@ ggsave("figure_1.pdf", units="in", width=9, height=9, bg="white")
 
 
 
+For app:
 
+```{r, fig.width=8.5, fig.height=4.5}
+ag <- aggregate(res[,c("FDR","TP.atFDR05", "FP.atFDR05")], by=res[,"method",drop=FALSE], na.rm=TRUE, FUN=mean)
+#dat2 <- ag[ag$method %in% c("areamir","woverlap","siteoverlap","lmadd","regmir.cc"),]
+dat2 <- ag[!(ag$method %in% c("ebayes","modscore","mw")),]
+p <- ggplot(ag, aes(FDR, TP.atFDR05, colour=method, label=method)) + geom_point(show.legend=FALSE) + 
+  ggrepel::geom_text_repel(data=dat2, show.legend=FALSE, min.segment.length=0) + scale_x_continuous(breaks=pretty_breaks(4)) + 
+  theme_classic(base_size=12) + #theme(legend.position="bottom") + 
+  labs(y="Sensitivity (TPR)", x="False Discovery Rate (FDR)", title="At nominal FDR=0.05") +
+  theme(aspect.ratio = 1)
 
-#Example
-```{r}
-# load("../../../enrichMiR/data/exampleDEA.RData")
-# sets_ex <- readRDS("../../../enrichMiR_data/Targetscan/20211124_Targetscan8_Human_ConPred_human.rds")
+plot_grid(h1, p, nrow=1, rel_widths=c(3,4), scale=c(0.95,1), labels="AUTO")
 ```
-
-
-```{r, message=FALSE,warning=FALSE}
-# e_ex <- testEnrichment(exampleDEA, sets = sets_ex,tests = "siteoverlap")
-# res <- getResults(e_ex,"siteoverlap.down",flatten = TRUE)
-```
-
-```{r, message=FALSE}
-# #parameters
-# enr.field = "enrichment"
-# sig.field = "FDR"
-# label.enr.thres = 0.5
-# col.field = NULL
-# label.sig.thres=0.05
-# max.sig.thres=100
-# opacity=0.5
-# maxLabels = 10
-# label.field = NULL
-# size.field = "overlap"
-# 
-# 
-# #prepare res
-# if(is.null(label.field)){
-#     res$set <- row.names(res)
-#     label.field <- "set"
-#   }else{
-#     if(length(label.field<- head(intersect(label.field,colnames(res)),n=1))==0)
-#       stop("`label.field` not found.")
-#   }
-# res[["overlap"]] <- as.numeric(res[["overlap"]])
-# res[["set_size"]] <- as.numeric(res[["set_size"]])
-# res <- res[order(res[[sig.field]]),]
-# res <- res[which(res[[sig.field]] <= max.sig.thres),]
-# w <- which(abs(res[[enr.field]])>=label.enr.thres & 
-#                res[[sig.field]]<label.sig.thres)
-# w <- head(w,n=maxLabels)
-# sig.field2 <- paste0("-log10(",sig.field,")")
-# res[[sig.field2]] <- -log10(res[[sig.field]])
-# ll <- list(label=label.field, x=enr.field, y=sig.field2)
-# if(!is.null(size.field)) ll$size <- size.field
-# if(!is.null(col.field)) ll$colour <- col.field
-# for(f in setdiff(colnames(res), unlist(ll))) ll[[f]] <- f
-#   
-# #plot
-# p5 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res[w,], show.legend = FALSE, point.padding = 5) + theme_classic() + ggtitle("HEK cells, miR-133 mimic transfection")
-
-```
-
-
-```{r, message=FALSE}
-# #.siteTypeColors()
-# fams <- metadata(sets_ex)$families
-# set_133 <- as.character(droplevels(fams[grep("miR-133a-3p.1",names(fams))]))
-# p6 <- CDplotWrapper(dea = exampleDEA, sets = sets_ex, setName = set_133, by = "best_stype") + 
-#   coord_cartesian(xlim = c(-2,1)) + theme_classic() + ggtitle(paste0(set_133," - miR-133a-3p")) + guides(color=guide_legend(title="best site type")) 
-```
-
-
-```{r, fig.width=9, fig.height=4.5}
-# plot_grid(p5, p6, rel_widths=c(3,4), scale=0.95, labels="AUTO")
-# pp2 <- plot_grid(p4,NULL, labels = c("C",""))
-```
-
-
-```{r}
-# pp <- plot_grid(pp1,pp2, labels = c(""),nrow = 2)
-# ggsave("figure_1.png",plot = pp, units = "in",width = 11,height = 8,bg = "white")
-# ggsave("figure_1.pdf",plot = pp, units = "in",width = 11,height = 8,bg = "white")
-```
-
-
-
-
-
 
