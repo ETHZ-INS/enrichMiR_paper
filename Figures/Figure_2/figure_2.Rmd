@@ -103,9 +103,9 @@ p2 <- CDplotWrapper(dea = dea, sets = sets_TS, setName = set_7, by = "sites", k 
 #sites
 set_7 <- "mmu-miR-7a-5p"
 
-p3 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "best_stype") + coord_cartesian(xlim = c(-0.35,0.35)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="ScanMiR\nbest site type")) + theme(plot.title = element_text(size=15), axis.text=element_text(size=12), axis.title=element_text(size=14),legend.title=element_text(size=13), legend.text=element_text(size=12))
+p3 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "best_stype") + coord_cartesian(xlim = c(-0.35,0.35)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="scanMiR\nbest site type")) + theme(plot.title = element_text(size=15), axis.text=element_text(size=12), axis.title=element_text(size=14),legend.title=element_text(size=13), legend.text=element_text(size=12))
 
-p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "score",k=3) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="ScanMiR\nscore")) + scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
+p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "score",k=3) + coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle("miR-7a-5p") + guides(color=guide_legend(title="scanMiR\nscore")) + scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
 ```
 
 
@@ -131,7 +131,8 @@ p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_7, by = "score",k=3
 pp <- plot_grid(p1,p3, labels=c("A","B"), nrow=1, rel_widths = c(0.9,0.75), scale = c(0.975,0.975))
 # pp2 <- plot_grid(p3,p4,labels = c("C","D"),nrow = 1)
 # pp <- plot_grid(pp1,pp2,nrow = 2)
-ggsave("figure_2.png",plot = pp, width = 11, height = 4,bg = "white")
+ggsave("figure_2.png",plot = pp, width = 11, height = 4,bg = "white", dpi = 300)
+ggsave("figure_2.pdf",plot = pp, width = 11, height = 4,bg = "white", dpi = 300)
 ```
 
 

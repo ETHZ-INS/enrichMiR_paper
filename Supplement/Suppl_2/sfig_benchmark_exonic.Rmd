@@ -43,7 +43,7 @@ p1 <- ggplot(ag, aes(FDR, TP.atFDR05, colour=exonic, shape=method)) +
 p2 <- bmhm(e, by="exonic", show_row_names = TRUE) + 
   bmhm(e, by="exonic", show_row_names = TRUE, value.var="FDR")
 p2 <- grid.grabExpr(draw(p2, column_title="Using exon-specific signal", 
-                         column_title_side = "bottom"))
+                         column_title_side = "top"))
 cowplot::plot_grid(p2,NULL,plot_grid(NULL,p1,nrow =1, labels = NULL,rel_widths = c(0.1,1)),nrow=3,rel_heights=c(3,0.1,2), labels=c("A","","B"), scale=0.95)
 ```
 

@@ -1,0 +1,69 @@
+---
+title: "Compile benchmark results"
+author: "Pierre-Luc Germain"
+date: "12/16/2021"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(SummarizedExperiment)
+  library(BiocParallel)
+  library(enrichMiR)
+  library(ggplot2)
+  library(ComplexHeatmap)
+})
+source("../functions.R")
+```
+
+
+# Running the benchmark
+
+```{r, eval=FALSE}
+allds=c("bartel.hela.DEA.SE.rds",
+        "bartel.hek.DEA.SE.rds",
+        "amin.DEA.SE.rds"
+        )
+
+tests <- c("areamir", "ebayes", "gsea", "lmadd", "siteoverlap", "woverlap")
+
+allParams <- c(
+  lapply(allds[1:2], FUN=function(x)
+    list(ds=x, ts="20211124_Targetscan8_Human_ConPred_human.rds", miRNAs=NULL)
+  ),
+  list(
+    list(ds=allds[[3]], ts="20211124_Targetscan8_Mouse_ConPred_mouse.rds", miRNAs=NULL)
+  )
+)
+
+tmp <- enrichBenchmark(allParams, nrep=2, cores=6, tests=tests, topExpressed=5000)
+```
+
+
+```{r}
+e <- aggregateBenchmarkResults()
+e$dataset <- gsub("20211124.+","",e$dataset)
+e <- e[(!grepl("\\.up$",e$method) | e$dataset %in% c("amin","jeong")) &
+       (!grepl("\\.down$",e$method) | !(e$dataset %in% c("amin","jeong"))),]
+e$method <- gsub("\\.down|\\.up","",e$method)
+saveRDS(e, file="aggregated.rds")
+```
+
+```{r, fig.height=7, fig.width=7}
+e <- readRDS(file="aggregated.rds")
+h1 <- bmhm(e, doSort=TRUE)
+h2 <- bmhm(e, value.var="FDR", doSort=TRUE)
+
+ag <- aggregate(e[,grep("^FP|^TP|FDR",colnames(e))], 
+                by=e[,c("dataset","method")], FUN=mean)
+p <- ggplot(ag, aes(FDR, TP.atFDR05, colour=method, label=method)) + geom_point() + 
+  ggrepel::geom_text_repel(data=ag[ag$method %in% c("areamir","woverlap","siteoverlap","lmadd"),]) + 
+  facet_wrap(~dataset)
+
+cowplot::plot_grid(
+  cowplot::plot_grid(
+    grid.grabExpr(draw(h1)), 
+    grid.grabExpr(draw(h2)), nrow=1),
+  p, nrow=2)
+```
+

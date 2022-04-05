@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
   library(enrichMiR)
   library(ggplot2)
   library(ComplexHeatmap)
+  library(scales)
 })
 source("../functions.R")
 ```
@@ -40,7 +41,7 @@ allParams <- c(
   )
 )
 
-tmp <- enrichBenchmark(allParams, nrep=2, cores=8, tests=c("siteoverlap","areamir","lmadd"),
+tmp <- enrichBenchmark(allParams[7:9], nrep=2, cores=8, tests=c("siteoverlap","areamir","lmadd","regmir.cc"),
                        prefix="sets2/")
 
 # reprocess the scanMiR matches with the appropriate truth

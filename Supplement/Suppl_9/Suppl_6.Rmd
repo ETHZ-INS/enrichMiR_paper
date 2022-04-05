@@ -99,16 +99,19 @@ if(!is.null(col.field)) ll$colour <- col.field
 for(f in setdiff(colnames(res), unlist(ll))) ll[[f]] <- f
   
 #plot
-p1 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res[w,], show.legend = FALSE, point.padding = 7,max.overlaps = 20, min.segment.length = 0) + theme_classic() + ggtitle("RBPs potentially regulating synaptic genes in the hippocampus") + xlab("enrichment")
+p1 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_text_repel(data=res[w,], show.legend = FALSE, point.padding = 7,max.overlaps = 20, min.segment.length = 0) + theme_classic() + ggtitle("RBPs potentially regulating genes of\nGO:0060076 'excitatory synapse' in hippocampus") + xlab("enrichment") + theme(plot.title = element_text(size=14), axis.text=element_text(size=13), axis.title=element_text(size=15),legend.title=element_text(size=14), legend.text=element_text(size=13))
 ```
 
 
 
 ```{r,fig.width=7, fig.height=7}
 p1
-#ggsave("Suppl_6.png",plot = p1, width = 10, height = 8,bg = "white")
+#ggsave("Suppl_6.png",plot = p1, width = 7, height = 7,bg = "white")
 ```
 
+### `r getFigNb()`
+
+***enrichMiR* analysis with the *oRNAment* RBP binding site collection.** Enrichment of RBP binding motifs in the 3'UTRs of mouse genes listed in the GO-Term "excitatory synapse" against genes expressed in the Hippocampus as reported in Lackinger et al. (2019) (17). Significance is assessed with the "siteoverlap" test. Notably, it has been previously suggested that neuronal-ELAV-like (nELAVL) RNA binding proteins associate with synaptic proteins in the human brain (18) and that nELAVL RBPs bind to the 3'UTRs of mRNAs (18, 19).
 
 
 

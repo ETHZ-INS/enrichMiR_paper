@@ -132,14 +132,16 @@ for(i in 1:10){
 
 
 
-```{r,fig.width=12, fig.height=12.5}
+```{r,fig.width=12, fig.height=13}
 pp <- plot_grid(plotlist = enr_list,labels = "AUTO",ncol = 3)
 pp
 #ggsave("Suppl_3.png",plot = pp,units = "in",width = 12,height = 14,bg = "white")
 ```
 
+\newpage
+
 ### `r getFigNb()`
 
-**enrichMiR analyses on RNA-sequencing datasets generated from several mouse tissues upon Cyrano knockout. A-J** Enrichment plots on the individual DEAs with genes expressed higher than a baseMean of 10. Bubbles correspond to miRNA families including a colour coded expression of its top expressed member where applicable. miRNA expresion values were applied using the preset mouse miRNA expression tables provided in enrichMiR with the following specifications: **(A,D-E,J)** "Brain", **(F)** "Pancreas", **(H)** "Muscle" & **(I)** "Spleen".
+***enrichMiR* analyses on RNA-sequencing datasets generated from several mouse tissues upon cyrano knockout. A-J:** Enrichment plots on the individual DEA with genes expressed higher than a baseMean of 10. Dots correspond to miRNA families including a colour coded expression of its top expressed member where applicable. miRNA expresion values were applied using the preset mouse miRNA expression tables provided in *enrichMiR* with the following specifications: **(A,D-E,J)** "Brain", **(F)** "Pancreas", **(H)** "Muscle" & **(I)** "Spleen". In agreement with the original study performed by Kleaveland et al. (2018) (10), the *enrichMiR* analysis suggests in increase in miR-7 activity in "Cortex", "Hippocampus", "Skeletal Muscle" and "Striatum/Thalamus". In contrast to the analysis performed by Kleaveland et al., the siteoverlap test performed with *enrichMiR* does not yield a significant increase in miR-7 acitivity in the "Anterior cortex", "Pancreatic Islets" and "Pituitary". Given that Kleaveland et al. used the Mann-Whitney test for their analysis and didn't see a significant increase of miR-7 levels in "Pancreatic Islets" and "Pituitary", we suspect that these differences come from the more robust error control of the siteoverlap test, as shown in the benchmarking.
 
 

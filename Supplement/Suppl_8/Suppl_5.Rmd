@@ -36,7 +36,9 @@ suppressPackageStartupMessages({
 ```{r}
 #dea
 dea <- fread("../../enrichMiR_Seq_datasets/Rajman_2017/Rajman_2019_DEA.csv")
-dea <- dea[dea$logCPM > 2.5,]
+dea <- dea[order(dea$logCPM,decreasing = TRUE),]
+dea <- dea[1:5000,]
+# dea <- dea[dea$logCPM > 2.5,]
 
 #mir
 mir <- as.data.frame(fread("../../enrichMiR_Seq_datasets/Rajman_2017/DIV20 enrich Neuron HC miRNA.csv"))
@@ -82,11 +84,11 @@ set_129_SC <- "rno-miR-129-5p"
 
 p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "sites", k = 2) + 
   coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
-  guides(color=guide_legend(title="ScanMiR")) + scale_colour_manual(values=c("#000004FF","#E65D2FFF"))
+  guides(color=guide_legend(title="scanMiR")) + scale_colour_manual(values=c("#000004FF","#E65D2FFF"))
 
 p5 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "score") + 
   coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
-  guides(color=guide_legend(title="ScanMiR\nscore")) + 
+  guides(color=guide_legend(title="scanMiR\nscore")) + 
   scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
 ```
 
@@ -113,5 +115,5 @@ ggsave("Suppl_5.png",pp,units = "in",width = 10,height = 10, bg = "white")
 
 ### `r getFigNb()`
 
-**CD plots supporting a potential role for miR-129-5p in PTX mediated homeostatic scaling in neurons. A** CD plot with the TargetScan rat conserved annotation, split by best site type. **B** CD plot split by score with the TargetScan rat conserved annotation. **C** CD plot split by score with the scanMiR rat annotation. **D-E** CD plots split in targets / non-targets with again the TargetScan rat conserved and the scanMiR rat annotations.
+**CD plots supporting a potential role for miR-129-5p in PTX mediated homeostatic scaling in neurons.** Analyses were performed on the 5'000 highest expressed genes of the RNA-sequencing dataset (as in Fig. 3). **A:** CD plot with the TargetScan rat conserved annotation, split by best site type (genes listed as "no sites" don't conatin a conserved binding site) **B:** CD plot split by score with the TargetScan rat conserved annotation. **C:** CD plot split by score with the scanMiR rat annotation. **D-E:** CD plots split in targets / non-targets with again the TargetScan rat conserved ("non-targets" equals no conserved binding site) and the scanMiR rat ("non-targets" equals no canonical 7mer or 8mer site) annotations.
 

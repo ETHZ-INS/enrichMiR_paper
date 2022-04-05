@@ -19,10 +19,17 @@ suppressPackageStartupMessages({
   library(scales)
   library(enrichMiR)
   library(grid)
+  library(ggthemes)
 })
 
 source("../../Benchmark/functions.R")
 ```
+
+```{r}
+n <- 12
+col_vector = tableau_color_pal('Tableau 20')(n)
+```
+
 
 # Benchmark
 ```{r}
@@ -55,7 +62,7 @@ ag <- renameDatasets(ag)
 p4 <- ggplot(ag, aes(FDR, TP.atFDR05, colour=method, label=method)) + geom_point() + 
   ggrepel::geom_text_repel(data=ag[ag$method %in% c("areamir","woverlap","siteoverlap","lmadd"),], show.legend=FALSE, min.segment.length=0) + 
   facet_wrap(~dataset, nrow=3) + scale_x_continuous(breaks=pretty_breaks(4)) + 
-  xlim(0,1) + theme_classic() + #theme(legend.position="bottom") + 
+  xlim(0,1) + theme_classic() +  scale_color_manual(values =  col_vector) +
   labs(y="Sensitivity (TPR)", x="False Discovery Rate (FDR)", title="At nominal FDR=0.05") +
   theme(
       strip.text.x = element_text(size = 11, color = "white"),strip.background = element_rect(color="black", fill="black"))
@@ -67,8 +74,8 @@ plot_grid(
   p1, p2, p3, p4, nrow=2, rel_heights=c(2,4), rel_widths=c(3,3), 
   scale=c(.95,.95,1,.95), labels=c("A","B","","E"))
 
-ggsave("figure_1.png", units="in", width=9, height=9, bg="white")
-ggsave("figure_1.pdf", units="in", width=9, height=9, bg="white")
+ggsave("figure_1.png", units="in", width=9, height=9, bg="white", dpi = 300)
+ggsave("figure_1.pdf", units="in", width=9, height=9, bg="white", dpi = 300)
 ```
 
 

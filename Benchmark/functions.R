@@ -120,7 +120,8 @@ doBenchmark <- function(res, TP){
 
 
 enrichBenchmark <- function( params, tests=c("siteoverlap", "areamir"), prefix="",
-                             props=c(.2,.35,.5), nrep=3, cores=6, seed=1234){
+                             props=c(.2,.35,.5), nrep=3, cores=6, seed=1234,
+                             topExpressed=NULL){
   names(i) <- i <- 1:nrep
   if(is.null(names(props))) names(props) <- round(100*props)
   props <- unlist(lapply( props, FUN=function(x) lapply(i, FUN=function(y) x)))
@@ -131,6 +132,10 @@ enrichBenchmark <- function( params, tests=c("siteoverlap", "areamir"), prefix="
     if(!is.null(p$miRNAs)) p$name <- paste0(p$name,".mirexp")
     print(paste(p$name, "using", p$ts))
     RD <- rowData(readRDS(file.path("data", p$ds)))
+    if(!is.null(topExpressed)){
+      TarExpr <- RD[[grep("^DEA",colnames(RD))[1]]]$logCPM
+      RD <- RD[head(order(-TarExpr), topExpressed),]
+    }
     dea.df.names <- colnames(RD[,grepl("DEA",colnames(RD))])
     dea.names <- gsub("DEA\\.","", dea.df.names)
     dea.names <- gsub("spliced\\.","", dea.names)

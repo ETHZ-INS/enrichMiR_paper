@@ -14,15 +14,17 @@ suppressPackageStartupMessages({
   library(viridis)
   library(data.table)
   library(S4Vectors)
-  suppressWarnings(library(enrichMiR))
 })
+devtools::load_all("/mnt/schratt/enrichMiR/")
 ```
 
 
 ```{r}
 #dea
 dea <- fread("../../enrichMiR_Seq_datasets/Rajman_2017/Rajman_2019_DEA.csv")
-dea <- dea[dea$logCPM > 2.5,]
+dea <- dea[order(dea$logCPM,decreasing = TRUE),]
+dea <- dea[1:5000,]
+# dea <- dea[dea$logCPM > 2.5,]
 
 #mir
 mir <- as.data.frame(fread("../../enrichMiR_Seq_datasets/Rajman_2017/DIV20 enrich Neuron HC miRNA.csv"))
@@ -42,6 +44,17 @@ e <- testEnrichment(dea, sets = sets_TS,tests = "siteoverlap",sets.properties = 
 res <- getResults(e,"siteoverlap.down",flatten = TRUE)
 ```
 
+#Supplementary Results table
+```{r}
+res2 <- res
+colnames(res2)[colnames(res2)=="logCPM"] <- "expression"
+res2$set_size <- as.numeric(res2$set_size)
+write.csv(res2,"../../Supplement/Supplementary_Table/Supplementary_Table_1.csv")
+```
+
+
+
+
 # enrichPlot
 ```{r}
 #parameters
@@ -49,7 +62,7 @@ enr.field = "enrichment"
 sig.field = "pvalue"
 col.field = "logCPM"
 label.enr.thres = 0.5
-label.sig.thres=0.025
+label.sig.thres=0.05
 max.sig.thres=100
 opacity=0.75
 cols <- viridis(6)
@@ -97,12 +110,12 @@ p1 <- ggplot(res, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom_te
 
 set_129_SC <- "rno-miR-129-5p"
 p3 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "best_stype") + 
-  coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
-  guides(color=guide_legend(title="ScanMiR\nbest site type")) + theme(plot.title = element_text(size=16), axis.text=element_text(size=13), axis.title=element_text(size=15),legend.title=element_text(size=14), legend.text=element_text(size=13))
+  coord_cartesian(xlim = c(-0.5,0.5)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
+  guides(color=guide_legend(title="scanMiR\nbest site type")) + theme(plot.title = element_text(size=16), axis.text=element_text(size=13), axis.title=element_text(size=15),legend.title=element_text(size=14), legend.text=element_text(size=13))
 
 # p4 <- CDplotWrapper(dea = dea, sets = sets_SC, setName = set_129_SC, by = "score") + 
 #   coord_cartesian(xlim = c(-0.75,0.75)) + theme_classic() + ggtitle(paste0("miR-129-5p ")) +
-#   guides(color=guide_legend(title="ScanMiR\nscore")) + 
+#   guides(color=guide_legend(title="scanMiR\nscore")) + 
 #   scale_color_manual(values = c("#F5DB4BFF","#A92E5EFF","#000004FF"))
 ```
 
@@ -129,7 +142,7 @@ res.go <- getResults(enr.go,test = "siteoverlap.features",flatten = TRUE)
 ```{r}
 #parameters
 enr.field = "enrichment"
-sig.field = "FDR"
+sig.field = "pvalue"
 col.field = "logCPM"
 label.enr.thres = 0.5
 label.sig.thres=0.05
@@ -171,13 +184,15 @@ p5 <- ggplot(res.go, do.call(aes_string, ll)) + geom_point(alpha=opacity) + geom
 
 
 ```{r}
-pp1 <- plot_grid(p1,p3,labels = c("A","B"), rel_widths = c(1,0.8))
+#pp1 <- plot_grid(p1,p3,labels = c("A","B"), rel_widths = c(1,0.8), scale = 0.97)
 #pp2 <- plot_grid(p3,p4,labels = c("C","D"))
-pp3 <- plot_grid(p5,NULL,labels = c("C",""), rel_widths = c(1,0.8))
 
-pp <- plot_grid(pp1,pp3,labels = NULL,nrow = 2)
-ggsave("figure_3.png", pp, units="in", width=11, height=8, bg="white")
-ggsave("figure_3.pdf", pp, units="in", width=11, height=8, bg="white")
+#pp3 <- plot_grid(p5,NULL,labels = c("C",""), rel_widths = c(1,0.8), scale = 0.97)
+#pp <- plot_grid(pp1,pp3,labels = NULL,nrow = 2)
+pp3 <- plot_grid(p3,p5, labels = c("B","C"), rel_widths = c(0.8,1), scale = 0.97)
+pp <- plot_grid(p1,NULL,pp3,labels = c("A","",""),nrow = 3, rel_heights = c(1.4,0.1,1))
+ggsave("figure_3.png", pp, units="in", width=11, height=9, bg="white", dpi = 300)
+ggsave("figure_3.pdf", pp, units="in", width=11, height=9, bg="white", dpi = 300)
 ```
 
 
