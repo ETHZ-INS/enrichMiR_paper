@@ -1,4 +1,4 @@
-# Analyses behing the enrichMiR
+# Analyses behind the enrichMiR
 
 This repository contains the code and intermediary files used to produce the figures of the enrichMiR paper.
 
